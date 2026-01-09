@@ -22,12 +22,17 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = [
             'id',
-            'issue',
-            'author',
             'body',
+            'author',
             'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+
+    def validate_body(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Comment body cannot be empty.")
+        return value
+
         
 class LabelSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,6 +43,7 @@ class LabelSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id']
         
+
 class IssueDetailSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)
     labels = LabelSerializer(many=True, read_only=True)
