@@ -32,7 +32,7 @@ class CommentCreateView(generics.CreateAPIView):
 
 
 class IssueLabelReplaceView(generics.GenericAPIView):
-    queryset = Issue.objects.all()   
+    queryset = Issue.objects.all()
     serializer_class = LabelSerializer
 
     @transaction.atomic
@@ -53,5 +53,48 @@ class IssueLabelReplaceView(generics.GenericAPIView):
 
         return Response(
             LabelSerializer(labels, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class BulkIssueStatusUpdateView(generics.GenericAPIView):
+    queryset = Issue.objects.all()
+    serializer_class = IssueSerializer
+    @transaction.atomic
+    def put(self, request):
+        if not isinstance(request.data, list):
+            return Response(
+                {"detail": "Expected a list of issue updates."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updated_issues = []
+
+        for item in request.data:
+            issue_id = item.get("id")
+            new_status = item.get("status")
+
+            if not issue_id or not new_status:
+                return Response(
+                    {"detail": "Each item must contain id and status."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            issue = get_object_or_404(Issue, id=issue_id)
+
+            if new_status not in dict(Issue.STATUS_CHOICES):
+                return Response(
+                    {"detail": f"Invalid status '{new_status}'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            issue.status = new_status
+            issue.version += 1
+            issue.save()
+
+            updated_issues.append(issue)
+
+        return Response(
+            IssueSerializer(updated_issues, many=True).data,
             status=status.HTTP_200_OK,
         )
