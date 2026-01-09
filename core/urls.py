@@ -8,6 +8,7 @@ from .views import (
     IssueCSVImportView,
     TopAssigneesReportView,
     IssueLatencyReportView,
+    IssueTimelineView,
 )
 
 urlpatterns = [
@@ -19,5 +20,6 @@ urlpatterns = [
     path('issues/import', IssueCSVImportView.as_view(), name='issue-csv-import'),
     path('reports/top-assignees', TopAssigneesReportView.as_view(), name='report-top-assignees'),
     path('reports/latency', IssueLatencyReportView.as_view(), name='report-latency'),
+    path('issues/<int:id>/timeline', IssueTimelineView.as_view(), name='issue-timeline'),
 
 ]

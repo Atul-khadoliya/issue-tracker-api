@@ -9,6 +9,7 @@ import csv
 import io
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Count,Avg, F, ExpressionWrapper, DurationField
+from django.utils.timezone import is_aware
 
 from .serializers import (
     IssueSerializer,
@@ -270,3 +271,56 @@ class IssueLatencyReportView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class IssueTimelineView(generics.GenericAPIView):
+    queryset = Issue.objects.all()
+    lookup_field = 'id'
+
+    def get(self, request, id):
+        issue = get_object_or_404(Issue, id=id)
+
+        events = []
+
+        events.append({
+            "type": "created",
+            "timestamp": issue.created_at,
+            "details": {
+                "title": issue.title,
+                "status": issue.status,
+            }
+        })
+
+        if issue.updated_at and issue.updated_at != issue.created_at:
+            events.append({
+                "type": "status_change",
+                "timestamp": issue.updated_at,
+                "details": {
+                    "status": issue.status,
+                }
+            })
+
+        for comment in issue.comments.all():
+            events.append({
+                "type": "comment",
+                "timestamp": comment.created_at,
+                "details": {
+                    "author": comment.author.username if comment.author else None,
+                    "body": comment.body,
+                }
+            })
+
+        labels = list(issue.labels.values_list("name", flat=True))
+        if labels:
+            events.append({
+                "type": "label_update",
+                "timestamp": issue.updated_at,
+                "details": {
+                    "labels": labels,
+                }
+            })
+
+        events.sort(key=lambda e: e["timestamp"])
+
+        return Response(events, status=status.HTTP_200_OK)
+
