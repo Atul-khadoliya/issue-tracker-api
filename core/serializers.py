@@ -84,3 +84,19 @@ class IssueUpdateSerializer(serializers.ModelSerializer):
             'assignee',
             'version',
         ]
+        
+        
+
+class IssueCSVRowSerializer(serializers.Serializer):
+    title = serializers.CharField(required=True, allow_blank=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+    status = serializers.ChoiceField(
+        choices=Issue.STATUS_CHOICES,
+        required=True
+    )
+    assignee = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_title(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Title cannot be empty.")
+        return value

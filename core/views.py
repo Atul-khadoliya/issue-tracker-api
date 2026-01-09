@@ -5,6 +5,10 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from .models import Issue, Label
 from .pagination import IssuePagination
+import csv
+import io
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Count
 
 from .serializers import (
     IssueSerializer,
@@ -12,6 +16,7 @@ from .serializers import (
     CommentSerializer,
     LabelSerializer,
     IssueUpdateSerializer,
+    IssueCSVRowSerializer,
 )
 
 
@@ -162,4 +167,79 @@ class BulkIssueStatusUpdateView(generics.GenericAPIView):
         )
 
 
+class IssueCSVImportView(generics.GenericAPIView):
+    serializer_class = IssueCSVRowSerializer
+    parser_classes = (MultiPartParser, FormParser)
 
+    def post(self, request):
+        file = request.FILES.get("file")
+
+        if not file:
+            return Response(
+                {"detail": "CSV file is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not file.name.endswith(".csv"):
+            return Response(
+                {"detail": "Only CSV files are allowed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        decoded_file = file.read().decode("utf-8")
+        io_string = io.StringIO(decoded_file)
+        reader = csv.DictReader(io_string)
+
+        required_fields = {"title", "description", "status", "assignee"}
+        if not required_fields.issubset(reader.fieldnames):
+            return Response(
+                {
+                    "detail": "CSV must contain headers: title, description, status, assignee"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        total_rows = 0
+        created = 0
+        failed = 0
+        errors = []
+
+        for index, row in enumerate(reader, start=1):
+            total_rows += 1
+
+            serializer = IssueCSVRowSerializer(data=row)
+            if serializer.is_valid():
+                Issue.objects.create(**serializer.validated_data)
+                created += 1
+            else:
+                failed += 1
+                errors.append(
+                    {
+                        "row": index,
+                        "errors": serializer.errors,
+                    }
+                )
+
+        return Response(
+            {
+                "total_rows": total_rows,
+                "created": created,
+                "failed": failed,
+                "errors": errors,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class TopAssigneesReportView(generics.GenericAPIView):
+    queryset = Issue.objects.none() 
+    def get(self, request):
+        data = (
+            Issue.objects
+            .exclude(assignee__isnull=True)
+            .values("assignee")
+            .annotate(issue_count=Count("id"))
+            .order_by("-issue_count")
+        )
+
+        return Response(list(data), status=status.HTTP_200_OK)
