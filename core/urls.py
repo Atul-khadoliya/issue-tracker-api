@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import IssueCreateView
+from .views import IssueListCreateView
 
 urlpatterns = [
-    path('issues', IssueCreateView.as_view(), name='issue-create'),
+    path('issues', IssueListCreateView.as_view(), name='issue-list-create'),
 ]
