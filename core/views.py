@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from .models import Issue, Label
+from .pagination import IssuePagination
 
 from .serializers import (
     IssueSerializer,
@@ -15,8 +16,22 @@ from .serializers import (
 
 
 class IssueListCreateView(generics.ListCreateAPIView):
-    queryset = Issue.objects.all().order_by('-created_at')
     serializer_class = IssueSerializer
+    pagination_class = IssuePagination
+
+    def get_queryset(self):
+        queryset = Issue.objects.all().order_by('-created_at')
+
+        status_param = self.request.query_params.get("status")
+        assignee_param = self.request.query_params.get("assignee")
+
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+
+        if assignee_param:
+            queryset = queryset.filter(assignee=assignee_param)
+
+        return queryset
 
 
 class IssueRetrieveUpdateView(generics.RetrieveUpdateAPIView):
