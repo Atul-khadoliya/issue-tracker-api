@@ -7,6 +7,7 @@ from .views import (
     BulkIssueStatusUpdateView,
     IssueCSVImportView,
     TopAssigneesReportView,
+    IssueLatencyReportView,
 )
 
 urlpatterns = [
@@ -17,5 +18,6 @@ urlpatterns = [
     path('issues/bulk-status', BulkIssueStatusUpdateView.as_view(), name='issue-bulk-status'),
     path('issues/import', IssueCSVImportView.as_view(), name='issue-csv-import'),
     path('reports/top-assignees', TopAssigneesReportView.as_view(), name='report-top-assignees'),
+    path('reports/latency', IssueLatencyReportView.as_view(), name='report-latency'),
 
 ]

@@ -8,7 +8,7 @@ from .pagination import IssuePagination
 import csv
 import io
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.db.models import Count
+from django.db.models import Count,Avg, F, ExpressionWrapper, DurationField
 
 from .serializers import (
     IssueSerializer,
@@ -243,3 +243,30 @@ class TopAssigneesReportView(generics.GenericAPIView):
         )
 
         return Response(list(data), status=status.HTTP_200_OK)
+
+
+class IssueLatencyReportView(generics.GenericAPIView):
+    queryset = Issue.objects.none()  # required for DRF browsable API
+
+    def get(self, request):
+        resolved_issues = Issue.objects.filter(
+            status__in=["resolved", "closed"]
+        )
+
+        latency_expression = ExpressionWrapper(
+            F("updated_at") - F("created_at"),
+            output_field=DurationField()
+        )
+
+        result = resolved_issues.aggregate(
+            average_latency=Avg(latency_expression)
+        )
+
+        average_latency = result["average_latency"]
+
+        return Response(
+            {
+                "average_resolution_time": average_latency
+            },
+            status=status.HTTP_200_OK,
+        )
