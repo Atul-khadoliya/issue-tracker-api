@@ -42,6 +42,14 @@ class LabelSerializer(serializers.ModelSerializer):
             'name',
         ]
         read_only_fields = ['id']
+        extra_kwargs = {
+            'name': {'validators': []},  
+        }
+    def validate_name(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Label name cannot be empty.")
+        return value.strip()
+
         
 
 class IssueDetailSerializer(serializers.ModelSerializer):
