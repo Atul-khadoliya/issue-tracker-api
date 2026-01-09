@@ -2,13 +2,15 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-
+from rest_framework.exceptions import ValidationError
 from .models import Issue, Label
+
 from .serializers import (
     IssueSerializer,
     IssueDetailSerializer,
     CommentSerializer,
     LabelSerializer,
+    IssueUpdateSerializer,
 )
 
 
@@ -17,10 +19,55 @@ class IssueListCreateView(generics.ListCreateAPIView):
     serializer_class = IssueSerializer
 
 
-class IssueDetailView(generics.RetrieveAPIView):
+class IssueRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Issue.objects.all()
-    serializer_class = IssueDetailSerializer
     lookup_field = 'id'
+
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return IssueUpdateSerializer
+        return IssueDetailSerializer
+
+    @transaction.atomic
+    def patch(self, request, id):
+        issue = get_object_or_404(Issue, id=id)
+
+        serializer = self.get_serializer(
+            issue,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+
+        incoming_version = serializer.validated_data.get("version")
+        
+        if incoming_version is None:
+           return Response(
+                {"version": ["This field is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+           
+        if incoming_version != issue.version:
+            return Response(
+                {
+                    "detail": "Version conflict. Issue has been modified by another request.",
+                    "current_version": issue.version,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        serializer.validated_data.pop("version")
+
+        for attr, value in serializer.validated_data.items():
+            setattr(issue, attr, value)
+
+        issue.version += 1
+        issue.save()
+
+        return Response(
+            IssueSerializer(issue).data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class CommentCreateView(generics.CreateAPIView):
@@ -98,3 +145,6 @@ class BulkIssueStatusUpdateView(generics.GenericAPIView):
             IssueSerializer(updated_issues, many=True).data,
             status=status.HTTP_200_OK,
         )
+
+
+

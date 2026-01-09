@@ -71,3 +71,16 @@ class IssueDetailSerializer(serializers.ModelSerializer):
             'labels',
         ]
         read_only_fields = fields
+
+class IssueUpdateSerializer(serializers.ModelSerializer):
+    version = serializers.IntegerField(required=True)
+
+    class Meta:
+        model = Issue
+        fields = [
+            'title',
+            'description',
+            'status',
+            'assignee',
+            'version',
+        ]
