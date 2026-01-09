@@ -37,3 +37,23 @@ class LabelSerializer(serializers.ModelSerializer):
             'name',
         ]
         read_only_fields = ['id']
+        
+class IssueDetailSerializer(serializers.ModelSerializer):
+    comments = CommentSerializer(many=True, read_only=True)
+    labels = LabelSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Issue
+        fields = [
+            'id',
+            'title',
+            'description',
+            'status',
+            'assignee',
+            'version',
+            'created_at',
+            'updated_at',
+            'comments',
+            'labels',
+        ]
+        read_only_fields = fields
