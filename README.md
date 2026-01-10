@@ -157,11 +157,11 @@ json
 - Executes a filtered query on the `issues` table  
 - Applies ordering and pagination at the database level  
 
-**Response Format**
-json 
+**Response**
+```json
 {
   "count": 10,
-  "next": "http://127.0.0.1:8000/issues?page=2",
+  "next": "/issues?page=2",
   "previous": null,
   "results": [
     {
@@ -176,4 +176,5 @@ json
     }
   ]
 }
+
 
