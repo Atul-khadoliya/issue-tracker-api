@@ -158,6 +158,7 @@ json
 - Applies ordering and pagination at the database level  
 
 **Response Format**
+json 
 {
   "count": 10,
   "next": "http://127.0.0.1:8000/issues?page=2",
