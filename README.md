@@ -274,3 +274,38 @@ json
   "updated_at": "2026-01-10T09:30:00Z"
 }
 ```
+### Add a Comment to an Issue
+**POST /issues/{id}/comments**
+
+#### Request Body
+```json
+{
+  "body": "This needs further investigation",
+  "author": 1
+}
+```
+#### Data Handling & Logic
+
+**Validation**
+- `id` must reference an existing issue  
+- `body` is required and must be non-empty  
+- `author` (provided because auth is not implemented in that case, comes in header) must reference a valid user  
+
+**Business Logic**
+- Associates the comment with the specified issue  
+- Stores the comment as an immutable record  
+- Does not modify the issue version or status  
+
+**Database Operation**
+- Inserts a new row into the `comments` table  
+- Sets the foreign key reference to the issue  
+
+**Response**
+```json
+{
+  "id": 10,
+  "body": "This needs further investigation",
+  "author": "atul",
+  "created_at": "2026-01-10T10:15:00Z"
+}
+```
