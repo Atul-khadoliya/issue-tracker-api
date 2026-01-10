@@ -176,5 +176,56 @@ json
     }
   ]
 }
+```
 
+### Retrieve a Single Issue
+**GET /issues/{id}**
 
+#### Path Parameters
+```json
+{
+  "id": 1
+}
+```
+#### Data Handling & Logic
+
+**Validation**
+- `id` must reference an existing issue  
+- Returns `404 Not Found` if the issue does not exist  
+
+**Business Logic**
+- Fetches the complete issue record  
+- Includes related **comments** and **labels**  
+- Read-only operation (no mutation)  
+
+**Database Operation**
+- Selects the issue by primary key  
+- Performs related lookups for comments and labels  
+
+**Response**
+```json
+{
+  "id": 1,
+  "title": "First issue",
+  "description": "Issue description",
+  "status": "open",
+  "assignee": 1,
+  "version": 1,
+  "created_at": "2026-01-09T12:08:01Z",
+  "updated_at": "2026-01-09T12:08:01Z",
+  "comments": [
+    {
+      "id": 5,
+      "body": "Needs investigation",
+      "author": "atul",
+      "created_at": "2026-01-09T14:10:00Z"
+    }
+  ],
+  "labels": [
+    {
+      "id": 2,
+      "name": "bug"
+    }
+  ]
+}
+```
