@@ -8,7 +8,7 @@ from .pagination import IssuePagination
 import csv
 import io
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.db.models import Count,Avg, F, ExpressionWrapper, DurationField
+from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
 from django.utils.timezone import is_aware
 
 from .serializers import (
@@ -21,6 +21,7 @@ from .serializers import (
 )
 
 
+# GET /issues (list with filtering & pagination) + POST /issues (create issue)
 class IssueListCreateView(generics.ListCreateAPIView):
     serializer_class = IssueSerializer
     pagination_class = IssuePagination
@@ -40,6 +41,7 @@ class IssueListCreateView(generics.ListCreateAPIView):
         return queryset
 
 
+# GET /issues/{id} (retrieve) + PATCH /issues/{id} (update with optimistic concurrency)
 class IssueRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Issue.objects.all()
     lookup_field = 'id'
@@ -61,13 +63,13 @@ class IssueRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         serializer.is_valid(raise_exception=True)
 
         incoming_version = serializer.validated_data.get("version")
-        
+
         if incoming_version is None:
-           return Response(
+            return Response(
                 {"version": ["This field is required."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-           
+
         if incoming_version != issue.version:
             return Response(
                 {
@@ -91,6 +93,7 @@ class IssueRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         )
 
 
+# POST /issues/{id}/comments — add a comment to an issue
 class CommentCreateView(generics.CreateAPIView):
     serializer_class = CommentSerializer
 
@@ -99,6 +102,7 @@ class CommentCreateView(generics.CreateAPIView):
         serializer.save(issue=issue)
 
 
+# PUT /issues/{id}/labels — replace issue labels atomically
 class IssueLabelReplaceView(generics.GenericAPIView):
     queryset = Issue.objects.all()
     serializer_class = LabelSerializer
@@ -125,9 +129,11 @@ class IssueLabelReplaceView(generics.GenericAPIView):
         )
 
 
+# PUT /issues/bulk-status — transactional bulk status update
 class BulkIssueStatusUpdateView(generics.GenericAPIView):
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
+
     @transaction.atomic
     def put(self, request):
         if not isinstance(request.data, list):
@@ -168,6 +174,7 @@ class BulkIssueStatusUpdateView(generics.GenericAPIView):
         )
 
 
+# POST /issues/import — CSV import with per-row validation and partial success
 class IssueCSVImportView(generics.GenericAPIView):
     serializer_class = IssueCSVRowSerializer
     parser_classes = (MultiPartParser, FormParser)
@@ -232,8 +239,10 @@ class IssueCSVImportView(generics.GenericAPIView):
         )
 
 
+# GET /reports/top-assignees — aggregate issues by assignee
 class TopAssigneesReportView(generics.GenericAPIView):
-    queryset = Issue.objects.none() 
+    queryset = Issue.objects.none()
+
     def get(self, request):
         data = (
             Issue.objects
@@ -246,8 +255,9 @@ class TopAssigneesReportView(generics.GenericAPIView):
         return Response(list(data), status=status.HTTP_200_OK)
 
 
+# GET /reports/latency — average resolution time for resolved/closed issues
 class IssueLatencyReportView(generics.GenericAPIView):
-    queryset = Issue.objects.none()  # required for DRF browsable API
+    queryset = Issue.objects.none()
 
     def get(self, request):
         resolved_issues = Issue.objects.filter(
@@ -263,16 +273,15 @@ class IssueLatencyReportView(generics.GenericAPIView):
             average_latency=Avg(latency_expression)
         )
 
-        average_latency = result["average_latency"]
-
         return Response(
             {
-                "average_resolution_time": average_latency
+                "average_resolution_time": result["average_latency"]
             },
             status=status.HTTP_200_OK,
         )
 
 
+# GET /issues/{id}/timeline — derived timeline of issue history (bonus)
 class IssueTimelineView(generics.GenericAPIView):
     queryset = Issue.objects.all()
     lookup_field = 'id'
@@ -323,4 +332,3 @@ class IssueTimelineView(generics.GenericAPIView):
         events.sort(key=lambda e: e["timestamp"])
 
         return Response(events, status=status.HTTP_200_OK)
-
