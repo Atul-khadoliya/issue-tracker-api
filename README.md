@@ -543,4 +543,24 @@ UI glitch,Button misaligned,resolved,1
     }
   }
 ]
+```
+## Testing
 
+Testing focuses on validating the most critical and risk-prone parts of the system rather than exhaustively testing every endpoint.
+
+### Testing Approach
+- Automated tests are written using **pytest** and **pytest-django**
+- Tests prioritize correctness of:
+  - Optimistic concurrency control
+  - Filtering and pagination logic
+- Simpler CRUD endpoints are verified through manual testing
+
+### Covered Test Scenarios
+- Successful issue update with correct version
+- Version conflict handling (`409 Conflict`) during concurrent updates
+- Issue listing with pagination
+- Issue filtering by status
+
+### Running Tests
+```bash
+pytest
