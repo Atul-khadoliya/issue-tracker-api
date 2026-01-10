@@ -564,3 +564,27 @@ Testing focuses on validating the most critical and risk-prone parts of the syst
 ### Running Tests
 ```bash
 pytest
+```
+
+## Future Improvements
+
+The current implementation focuses on core backend functionality and correctness.  
+The following improvements can be added to enhance scalability, security, and usability:
+
+### Authentication
+- Add user authentication using JWT or session-based auth
+- Restrict issue creation and updates to authenticated users
+
+### Role-Based Access Control
+- Introduce roles such as `admin`, `maintainer`, and `viewer`
+- Restrict bulk operations and reports to privileged roles
+
+### Async CSV Processing
+- Move CSV import to a background job using Celery or Django-Q
+- Prevent long-running requests for large CSV files
+- Provide job status tracking for imports
+
+### Audit Logs
+- Persist issue history instead of deriving it dynamically
+- Track changes such as status updates, assignee changes, and label modifications
+- Useful for compliance and debugging in production systems
