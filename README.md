@@ -229,3 +229,48 @@ json
   ]
 }
 ```
+### Update an Issue (Optimistic Concurrency)
+**PATCH /issues/{id}**
+
+#### Request Body
+```json
+{
+  "title": "Updated issue title",
+  "description": "Updated description",
+  "status": "resolved",
+  "assignee": 2,
+  "version": 1
+}
+```
+#### Data Handling & Logic
+
+**Validation**
+- `id` must reference an existing issue  
+- `version` is required and must be an integer  
+- Returns `400 Bad Request` if `version` is missing  
+- Returns `404 Not Found` if the issue does not exist  
+
+**Business Logic**
+- Uses **optimistic concurrency control**  
+- Compares the incoming `version` with the current version stored in the database  
+- If versions do not match, the update is rejected  
+- On success, updates only the provided fields and increments the version  
+
+**Database Operation**
+- Selects the issue by primary key  
+- Updates issue fields inside a transaction  
+- Increments the version and persists the changes  
+
+**Response**
+```json
+{
+  "id": 1,
+  "title": "Updated issue title",
+  "description": "Updated description",
+  "status": "resolved",
+  "assignee": 2,
+  "version": 2,
+  "created_at": "2026-01-09T12:08:01Z",
+  "updated_at": "2026-01-10T09:30:00Z"
+}
+```
