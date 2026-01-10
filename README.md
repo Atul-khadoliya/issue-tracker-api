@@ -1,4 +1,4 @@
-## Project Overview
+ ## Project Overview
 
 This project is a backend **Issue Tracker API** built using **Django REST Framework** and **PostgreSQL**.
 
@@ -309,3 +309,238 @@ json
   "created_at": "2026-01-10T10:15:00Z"
 }
 ```
+### Replace Issue Labels
+**PUT /issues/{id}/labels**
+
+#### Request Body
+```json
+[
+  { "name": "bug" },
+  { "name": "urgent" }
+]
+```
+#### Data Handling & Logic
+
+**Validation**
+- `id` must reference an existing issue  
+- Request body must be a list of label objects  
+- Each label `name` must be non-empty  
+
+**Business Logic**
+- Replaces all existing labels for the issue  
+- Creates labels if they do not already exist  
+- Operation is executed atomically to ensure consistency  
+
+**Database Operation**
+- Fetches the issue by primary key  
+- Inserts new labels if required  
+- Updates the issue–label relationship inside a transaction  
+
+**Response**
+```json
+[
+  { "id": 1, "name": "bug" },
+  { "id": 2, "name": "urgent" }
+]
+```
+
+### Bulk Update Issue Status
+**PUT /issues/bulk-status**
+
+#### Request Body
+```json
+[
+  { "id": 1, "status": "resolved" },
+  { "id": 2, "status": "closed" },
+  .....
+]
+```
+#### Data Handling & Logic
+
+**Validation**
+- Request body must be a list of objects  
+- Each object must contain a valid `id` and `status`  
+- `status` must be one of the allowed status values  
+- Returns `400 Bad Request` if the payload structure is invalid  
+
+**Business Logic**
+- Updates the status of multiple issues in a single request  
+- All updates are executed within a single transaction  
+- If any update fails, the entire operation is rolled back  
+
+**Database Operation**
+- Fetches each issue by primary key  
+- Updates the `status` and increments the `version` for each issue  
+- Commits changes only if all updates succeed  
+
+**Response**
+```json
+[
+  {
+    "id": 1,
+    "title": "First issue",
+    "status": "resolved",
+    "version": 2
+  },
+  {
+    "id": 2,
+    "title": "Second issue",
+    "status": "closed",
+    "version": 3
+  }
+]
+```
+### Import Issues via CSV
+**POST /issues/import**
+
+#### Request Body
+```text
+multipart/form-data
+file=<issues.csv>
+```
+#### CSV Format
+```csv
+title,description,status,assignee
+Login bug,Error on login,open,1
+UI glitch,Button misaligned,resolved,1
+#### Data Handling & Logic
+```
+**Validation**
+- A CSV file must be provided  
+- File must have a `.csv` extension  
+- CSV must contain headers: `title`, `description`, `status`, `assignee`  
+- Each row is validated independently  
+
+**Business Logic**
+- Parses the CSV file row by row  
+- Valid rows are inserted as new issues  
+- Invalid rows are skipped without aborting the process  
+- Supports partial success  
+
+**Database Operation**
+- Inserts a new row into the `issues` table for each valid CSV row  
+- Does not wrap all inserts in a single transaction to allow partial success  
+
+**Response**
+```json
+{
+  "total_rows": 5,
+  "created": 3,
+  "failed": 2,
+  "errors": [
+    {
+      "row": 2,
+      "errors": {
+        "status": ["Invalid status value"]
+      }
+    }
+  ]
+}
+```
+
+### Top Assignees Report
+**GET /reports/top-assignees**
+
+#### Data Handling & Logic
+
+**Validation**
+- No request parameters are required  
+- Only issues with a non-null assignee are considered  
+
+**Business Logic**
+- Aggregates issues by assignee  
+- Counts the number of issues assigned to each user  
+- Orders the result in descending order of issue count  
+
+**Database Operation**
+- Executes a grouped aggregation query on the `issues` table  
+- Uses `COUNT` to compute the number of issues per assignee  
+
+**Response**
+```json
+[
+  {
+    "assignee": 1,
+    "issue_count": 5
+  },
+  {
+    "assignee": 2,
+    "issue_count": 3
+  }
+]
+```
+### Average Resolution Time Report
+**GET /reports/latency**
+
+#### Data Handling & Logic
+
+**Validation**
+- No request parameters are required  
+- Only issues with status `resolved` or `closed` are considered  
+
+**Business Logic**
+- Calculates the time difference between `created_at` and `updated_at`  
+- Computes the average resolution time across all resolved/closed issues  
+
+**Database Operation**
+- Filters issues by terminal status  
+- Uses a database-level expression to compute durations  
+- Aggregates the average using `AVG`  
+
+**Response**
+```json
+{
+  "average_resolution_time": "16069.073806"
+}
+```
+### Issue Timeline (Bonus)
+**GET /issues/{id}/timeline**
+
+#### Data Handling & Logic
+
+**Validation**
+- `id` must reference an existing issue  
+- Returns `404 Not Found` if the issue does not exist  
+
+**Business Logic**
+- Builds a derived timeline of the issue’s history  
+- Includes key events such as:
+  - Issue creation
+  - Status changes
+  - Comment additions
+  - Label updates
+- Timeline is read-only and computed dynamically (no audit table)
+
+**Database Operation**
+- Fetches the issue by primary key  
+- Retrieves related comments and labels  
+- Does not persist timeline data; events are derived at request time  
+
+**Response**
+```json
+[
+  {
+    "type": "created",
+    "timestamp": "2026-01-09T12:08:01Z",
+    "details": {
+      "title": "First issue",
+      "status": "open"
+    }
+  },
+  {
+    "type": "comment",
+    "timestamp": "2026-01-09T14:10:00Z",
+    "details": {
+      "author": "atul",
+      "body": "Needs investigation"
+    }
+  },
+  {
+    "type": "status_change",
+    "timestamp": "2026-01-10T09:30:00Z",
+    "details": {
+      "status": "resolved"
+    }
+  }
+]
+
